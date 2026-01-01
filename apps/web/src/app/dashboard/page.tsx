@@ -6,7 +6,7 @@ import { DashboardService, DashboardStats } from "@/lib/dashboard";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 
 export default function DashboardPage() {
-    const { user, orgId } = useAuth();
+    const { user, orgId, loading: authLoading } = useAuth();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -14,7 +14,14 @@ export default function DashboardPage() {
 
     useEffect(() => {
         async function fetchStats() {
-            if (!orgId) return;
+            if (authLoading) return; // Wait for auth to finish
+
+            if (!orgId) {
+                // Not stuck loading, just no data/org
+                setLoading(false);
+                return;
+            }
+
             try {
                 const data = await DashboardService.getStats(orgId);
                 setStats(data);
@@ -34,9 +41,17 @@ export default function DashboardPage() {
             }
         }
         fetchStats();
-    }, [orgId]);
+    }, [orgId, authLoading]);
 
+    if (authLoading) return <div className="p-8">Verificando autenticação...</div>;
     if (loading) return <div className="p-8">Carregando painel...</div>;
+
+    if (!orgId) return (
+        <div className="p-8 text-yellow-600">
+            <h2 className="text-xl font-bold mb-2">Atenção</h2>
+            <p>Seu usuário não está vinculado a uma organização.</p>
+        </div>
+    );
     if (error) return (
         <div className="p-8 text-red-500">
             <h2 className="text-xl font-bold mb-2">Erro</h2>
