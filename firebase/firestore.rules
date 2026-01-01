@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to get the user's Organization ID
+    function getUserOrgId() {
+      // Assumes the user document exists and has an 'orgId' field
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.orgId;
+    }
+    
+    // Users Collection
+    // Users can read/write their own profile
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Organizations Collection
+    // Read-only for members of the organization
+    match /organizations/{orgId} {
+      allow read: if request.auth != null && getUserOrgId() == orgId;
+      allow write: if false; // Managed by Admin SDK or Cloud Functions
+    }
+    
+    // Assets Collection
+    // CRUD for members of the organization
+    // Assets Collection
+    // CRUD for members of the organization
+    // Public GET allowed (for QR Code scanning)
+    match /assets/{assetId} {
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.orgId == getUserOrgId();
+      allow create: if request.auth != null && request.resource.data.orgId == getUserOrgId();
+      allow update, delete: if request.auth != null && resource.data.orgId == getUserOrgId();
+    }
+    
+    // Tickets Collection
+    // CRUD for members
+    // Public CREATE allowed (if orgId is present)
+    match /tickets/{ticketId} {
+      allow read: if request.auth != null && resource.data.orgId == getUserOrgId();
+      allow create: if request.resource.data.orgId != null;
+      allow update, delete: if request.auth != null && resource.data.orgId == getUserOrgId();
+    }
+    
+    // Maintenance Plans Collection
+    match /maintenance_plans/{planId} {
+      allow read: if request.auth != null && resource.data.orgId == getUserOrgId();
+      allow write: if request.auth != null && resource.data.orgId == getUserOrgId(); // Simplification for mvp
+    }
+  }
+}
