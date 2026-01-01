@@ -14,21 +14,30 @@ const firebaseConfig = {
 };
 
 if (typeof window !== 'undefined') {
-  console.log("Firebase Config in Browser:", {
-    projectId: firebaseConfig.projectId,
+  console.log("Firebase Config DEBUG:", JSON.stringify({
+    apiKey: firebaseConfig.apiKey ? "PRESENT" : "MISSING",
     authDomain: firebaseConfig.authDomain,
-    hasApiKey: !!firebaseConfig.apiKey
-  });
+    projectId: firebaseConfig.projectId,
+    appId: firebaseConfig.appId
+  }, null, 2));
 }
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
-// Use initializeFirestore to enable long polling (fixes 'offline' error in some networks)
-const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
+// Use initializeFirestore to enable long polling
+// Adding a check to avoid re-initialization error if already initialized
+let db;
+try {
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+  });
+  console.log("Firestore initialized with Long Polling");
+} catch (e) {
+  db = getFirestore(app);
+  console.log("Firestore was already initialized, using existing instance");
+}
 
 const storage = getStorage(app);
 const functions = getFunctions(app);
